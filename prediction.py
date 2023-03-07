@@ -2,9 +2,11 @@ import numpy as np
 import keras.utils as image
 from keras.applications.vgg19 import preprocess_input, decode_predictions
 from keras.models import Model
+from keras.models import load_model
 from keras.layers import Dense, GlobalAveragePooling2D
 from keras.optimizers import SGD
 from keras.applications.vgg19 import VGG19
+
 
 class VGG19CoffeeClassifier:
     def __init__(self, pretrained=True, model_path=None):

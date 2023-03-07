@@ -41,7 +41,7 @@ class MainWindow(QMainWindow):
         self.model.setHorizontalHeaderLabels(["File Name", "Ripeness", "Accuracy"])
         self.table_view.setModel(self.model)
 
-        self.use_custom = True
+        self.pre_trained = True
         self.model_path = None
 
         # Create an image preview widget
@@ -110,10 +110,11 @@ class MainWindow(QMainWindow):
         if self.radio_button_2.isChecked():
             if self.model_path is None:
                 self.add_model()
-                self.use_custom = True
+                self.pre_trained = False
 
         elif self.radio_button_1.isChecked():
-            self.use_custom = False
+            self.pre_trained = True
+            print("Using pretrained")
         else:
             print("No option selected")
 
@@ -148,7 +149,7 @@ class MainWindow(QMainWindow):
 
     def predict_images(self):
         vgg_coffee = VGG19CoffeeClassifier(
-            pretrained=self.use_custom, model_path=self.model_path
+            pretrained=self.pre_trained, model_path=self.model_path
         )
         for i in range(self.model.rowCount()):
             file = self.model.item(i, 0).text()
