@@ -1,0 +1,5 @@
+env/
+trainer/__pycache__/
+dataset/
+/*.png
+trainer/*.h5
