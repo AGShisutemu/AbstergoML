@@ -1,38 +1,63 @@
 import numpy as np
-import tensorflow as tf
 import keras.utils as image
-from keras.applications.vgg19 import preprocess_input
+from keras.applications.vgg19 import preprocess_input, decode_predictions
+from keras.models import Model
+from keras.layers import Dense, GlobalAveragePooling2D
+from keras.optimizers import SGD
+from keras.applications.vgg19 import VGG19
 
-model = tf.keras.applications.VGG19(
-    weights="imagenet", include_top=False, input_shape=(224, 224, 3)
-)
+class VGG19CoffeeClassifier:
+    def __init__(self, pretrained=True, model_path=None):
+        if pretrained:
+            # Load the pre-trained VGG19 model without the top layers
+            self.base_model = VGG19(weights='imagenet', include_top=False)
 
-for layer in model.layers[:-5]:
-    layer.trainable = False
+            # Add new classification layers to the model
+            x = self.base_model.output
+            x = GlobalAveragePooling2D()(x)
+            x = Dense(1024, activation='relu')(x)
+            predictions = Dense(4, activation='softmax')(x)
 
-x = model.output
-x = tf.keras.layers.GlobalAveragePooling2D()(x)
-x = tf.keras.layers.Dense(1024, activation="relu")(x)
-x = tf.keras.layers.Dropout(0.5)(x)
-x = tf.keras.layers.Dense(512, activation="relu")(x)
-x = tf.keras.layers.Dropout(0.5)(x)
-predictions = tf.keras.layers.Dense(4, activation="softmax")(x)
-model = tf.keras.models.Model(inputs=model.input, outputs=predictions)
+            # Define the new model with the added classification layers
+            self.model = Model(inputs=self.base_model.input, outputs=predictions)
 
-model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
-# Assume that the training data is stored in the train_data directory
-img = image.load_img("coffee_berry.png", target_size=(224, 224))
-img_array = image.img_to_array(img)
-img_array = np.expand_dims(img_array, axis=0)
-img_array = preprocess_input(img_array)
+            # Freeze the weights of the pre-trained layers
+            for layer in self.base_model.layers:
+                layer.trainable = False
 
-ripeness_labels = {0: "Unripe", 1: "Semi-ripe", 2: "Ripe", 3: "Overripe"}
-prediction = model.predict(img_array)
-predicted_ripeness = ripeness_labels[np.argmax(prediction)]
+            # Compile the model with a SGD optimizer and categorical crossentropy loss
+            self.model.compile(optimizer=SGD(lr=0.0001, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy'])
+        else:
+            # Load the custom model from the .h5 file
+            self.model = load_model(model_path)
 
-# Print the predicted ripeness of the coffee berry
-print("Predicted ripeness:", predicted_ripeness)
-# Get the accuracy in percentage in percent
-print("Accuracy:", np.max(prediction) * 100)
+        # Define the image size for the model input
+        self.img_width, self.img_height = 224, 224
 
-# TODO MAKE TKINTER GUI
+        # Define the label dictionary
+        self.label_dict = {0: "Unripe", 1: "Semi-ripe", 2: "Ripe", 3: "Overripe"}
+
+    def classify(self, image_path):
+        # Load the image to classify
+        img = image.load_img(image_path, target_size=(self.img_width, self.img_height))
+
+        # Convert the image to an array and preprocess it for input into the model
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
+
+        # Make a prediction with the model
+        preds = self.model.predict(x)
+
+        # Decode the predictions and return the predicted label
+        pred_index = np.argmax(preds)
+        pred_label = self.label_dict[pred_index]
+        accuracy = preds[0][pred_index]
+        return {"accuracy": f"{accuracy:.2f}", "label": pred_label}
+
+
+# Usage
+# vgg_coffee = VGG19CoffeeClassifier(pretrained=True, model_path='my_model.h5')
+# image_path = 'coffee_berry.png'
+# pred_label = vgg_coffee.classify(image_path)
+# print('Predicted:', pred_label)

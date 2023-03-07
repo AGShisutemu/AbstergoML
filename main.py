@@ -1,121 +1,165 @@
-import tkinter as tk
-from tkinter import filedialog
-from tkinter import Tk
-from tkinter import ttk
-from PIL import Image, ImageTk
+import sys
+import re
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QTableView,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QFileDialog,
+    QComboBox,
+    QPlainTextEdit,
+    QToolBar,
+    QToolButton,
+    QRadioButton,
+)
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QStandardItemModel, QStandardItem, QTextCursor
+from prediction import VGG19CoffeeClassifier
 
 
-class App(tk.Frame):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.grid(sticky=tk.N + tk.S + tk.E + tk.W)
-        self.create_widgets()
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
 
-        # configure grid
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
-        self.grid_columnconfigure(1, weight=1)
-
-    def create_widgets(self):
-        self.table = ttk.Treeview(root, columns=("col1", "col2", "col3"))
-        self.table.heading("#0", text="Index")
-        self.table.heading("col1", text="File Name")
-        self.table.heading("col2", text="Ripeness")
-        self.table.heading("col3", text="Accuracy")
-        self.table.grid(
-            row=0,
-            column=2,
-            padx=10,
-            pady=10,
-            rowspan=3,
-            sticky=tk.N + tk.S + tk.E + tk.W,
+        # Create a table view
+        self.table_view = QTableView(self)
+        # self.setFixedSize(800, 600)
+        self.setWindowFlags(
+            Qt.Window
+            | Qt.CustomizeWindowHint
+            | Qt.WindowTitleHint
+            | Qt.WindowCloseButtonHint
         )
 
-        # Add a selection event handler for the table rows
-        self.table.bind("<ButtonRelease-1>", self.handle_row_selection)
+        # Create a data model for the table
+        self.model = QStandardItemModel(0, 2, self)
+        self.model.setHorizontalHeaderLabels(["File Name", "Ripeness", "Accuracy"])
+        self.table_view.setModel(self.model)
 
-        self.preview_frame = tk.Frame(self, width=400, height=400)
-        self.preview_frame.grid(
-            row=0,
-            column=1,
-            padx=10,
-            pady=10,
-            rowspan=3,
-            sticky=tk.N + tk.S + tk.E + tk.W,
-        )
-        self.preview_frame.grid_propagate(0)
+        self.use_custom = True
+        self.model_path = None
 
-        self.preview_label = tk.Label(self.preview_frame)
-        self.preview_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        # Create an image preview widget
+        self.image_label = QLabel(self)
+        self.image_label.setAlignment(Qt.AlignCenter)
+        self.show_image("placeholder.jpg")
 
-        self.add_button = tk.Button(
-            self, text="Add Images", command=self.add_images
-        )
-        self.add_button.grid(row=3, column=3, padx=10, pady=10)
+        # Create two buttons
+        self.button1 = QPushButton("Add Images", self)
+        self.button2 = QPushButton("Predict Images", self)
+        self.button1.clicked.connect(self.add_images)
+        self.button2.clicked.connect(self.predict_images)
 
-        self.upload_button = tk.Button(
-            self, text="Predict Images", command=self.upload_images
-        )
+        # Create radio buttons
+        self.radio_button_1 = QRadioButton("Pretrained Models")
+        self.radio_button_2 = QRadioButton("Custom Models")
+        self.radio_button_1.toggled.connect(self.radio_button_toggled)
+        self.radio_button_2.toggled.connect(self.radio_button_toggled)
 
-        # Center the upload button
-        self.upload_button.grid(row=3, column=2, padx=11, pady=10)
+        # Create a horizontal layout to hold the image and buttons
+        image_layout = QVBoxLayout()
+        image_layout.addWidget(self.image_label)
+        image_layout.addWidget(self.button1)
+        image_layout.addWidget(self.button2)
+        image_layout.addWidget(self.radio_button_1)
+        image_layout.addWidget(self.radio_button_2)
 
-    def add_images(self):
-        files = filedialog.askopenfilenames(
-            initialdir="./",
-            title="Select Images",
-            filetypes=[
-                ("JPEG Files", "*.jpg"),
-                ("PNG Files", "*.png"),
-                ("All Files", "*.*"),
-            ],
-        )
-        for i, file in enumerate(files):
-            self.table.insert(
-                "",
-                "end",
-                text=str(i),
-                values=(str(file), "Riped", "0.9"),
-            )
-            self.show_image(file)
+        # Create a horizontal layout to hold the table and image layouts
+        table_widget = QWidget(self)
+        layout = QHBoxLayout(table_widget)
+        layout.addWidget(self.table_view)
+        layout.addLayout(image_layout)
+
+        # Set the central widget of the main window
+        self.setCentralWidget(table_widget)
+
+        # Connect the clicked signal of the table view to a custom slot
+        self.table_view.clicked.connect(self.handle_table_click)
+
+        self.text_edit = QPlainTextEdit()
+        # Redirect terminal output to the log
+        sys.stdout = self
+        # Initialize the output buffer
+        self.buffer = ""
+        image_layout.addWidget(self.text_edit)
+
+    def write(self, message):
+        # Append the message to the output buffer
+        self.buffer += message
+
+        # If a newline character is encountered, flush the buffer to the log
+        if "\n" in message:
+            lines = self.buffer.split("\n")
+            for line in lines[:-1]:
+                # Write each line to the log
+                line = re.sub(r"[^\x20-\x7E]+", "", line)
+                self.text_edit.moveCursor(QTextCursor.End)
+                self.text_edit.insertPlainText(line + "\n")
+            # Clear the buffer
+            self.buffer = lines[-1]
+
+    def flush(self):
+        pass
+
+    def radio_button_toggled(self):
+        if self.radio_button_2.isChecked():
+            if self.model_path is None:
+                self.add_model()
+                self.use_custom = True
+
+        elif self.radio_button_1.isChecked():
+            self.use_custom = False
+        else:
+            print("No option selected")
 
     def show_image(self, filename):
-        image = Image.open(filename)
-        w, h = image.size
-        aspect_ratio = w / h
-        max_size = 400
+        pixmap = QPixmap(filename)
+        pixmap = pixmap.scaledToHeight(200)
+        self.image_label.setPixmap(pixmap)
 
-        if aspect_ratio > 1:
-            w = max_size
-            h = int(w / aspect_ratio)
-        else:
-            h = max_size
-            w = int(h * aspect_ratio)
+    def add_model(self):
+        files, _ = QFileDialog.getOpenFileName(
+            self, "Open file", "", "Custom Model (*.h5)"
+        )
 
-        image = image.resize((w, h))
-        photo = ImageTk.PhotoImage(image)
-        self.preview_label.configure(image=photo)
-        self.preview_label.image = photo
+        self.model_path = files
 
-    def handle_row_selection(self, event):
-        # Get the ID of the selected row
-        selection = self.table.selection()
-        if len(selection) == 0:
-            return
-        row_id = selection[0]
+    def add_images(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "Open file", "", "Images (*.png *.xpm *.jpg *.bmp *.gif)"
+        )
+        for i, file in enumerate(files):
+            self.show_image(file)
+            row = self.model.rowCount()
+            self.model.insertRow(row)
+            for column in range(1):
+                self.model.setItem(row, 0, QStandardItem(file))
 
-        # Get the data for the selected row
-        row_data = self.table.item(row_id)["values"]
-        self.show_image(row_data[0])
+    def handle_table_click(self, index):
+        # Get the selected row and column index
+        index = self.table_view.selectedIndexes()[0]
+        row = index.row()
+        self.show_image(self.model.item(row, 0).text())
 
-    def upload_images(self):
-        for i in range(self.filelist.size()):
-            filename = self.filelist.get(i)
-            # do something with the image file here
-            print(f"Uploading {filename}...")
+    def predict_images(self):
+        vgg_coffee = VGG19CoffeeClassifier(
+            pretrained=self.use_custom, model_path=self.model_path
+        )
+        for i in range(self.model.rowCount()):
+            file = self.model.item(i, 0).text()
+            print(vgg_coffee.classify(file))
+            data = vgg_coffee.classify(file)
+            self.model.setItem(i, 1, QStandardItem(data['label']))
+            self.model.setItem(i, 2, QStandardItem(str(data['accuracy'])))
 
 
-root = Tk()
-root.resizable(False, False)
-app = App(root)
-app.mainloop()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())

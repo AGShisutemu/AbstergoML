@@ -3,3 +3,4 @@ trainer/__pycache__/
 dataset/
 /*.png
 trainer/*.h5
+__pycache__
