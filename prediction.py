@@ -55,7 +55,7 @@ class VGG19CoffeeClassifier:
         pred_index = np.argmax(preds)
         pred_label = self.label_dict[pred_index]
         accuracy = preds[0][pred_index]
-        return {"accuracy": f"{accuracy:.2f}", "label": pred_label}
+        return {"accuracy": f"{accuracy * 100}%", "label": pred_label}
 
 
 # Usage
