@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import (
     QPlainTextEdit,
     QToolBar,
     QToolButton,
+    QMenu
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
@@ -78,6 +79,21 @@ class MainWindow(QMainWindow):
         # Initialize the output buffer
         self.buffer = ""
         image_layout.addWidget(self.text_edit)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+    
+    def show_context_menu(self, position):
+        context_menu = QMenu(self)
+        action1 = context_menu.addAction("Delete")
+
+        action1.triggered.connect(self.action1_triggered)
+
+        context_menu.exec(self.table_view.viewport().mapToGlobal(position))
+
+    def action1_triggered(self):
+        index = self.table_view.currentIndex()
+        if index.isValid():
+            self.table_view.model().removeRow(index.row())
 
     def write(self, message):
         # Append the message to the output buffer
