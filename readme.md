@@ -62,3 +62,31 @@ This works best with NVIDIA GPUs that supports CUDA.
     # Use the loaded model to make predictions
     predictions = model.predict(data)
     ```
+
+## Setup
+- Open a terminal inside the directory and run the python venv module to create a virtual environment
+  ```bash
+  python -m venv venv
+  ```
+  - Activate the virtual environment
+    - Windows
+      ```bash
+      venv\Scripts\activate
+      ```
+    - Linux
+      ```bash
+      source venv/bin/activate
+      ```
+- Install the required packages
+    ```bash
+    pip install -r requirements.txt
+    ```
+- Install CUDA and cuDNN if you have an NVIDIA GPU (OPTIONAL)
+- Run the trainer.py file
+  ```bash
+  cd trainer && python trainer_gui.py
+  ```  
+- After training the models you can run the main file
+  ```bash
+  cd .. && python main.py
+  ```
