@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
             print(f"copying to ../dataset/train/{item_data}/image_{row}.{file_extension}")
         # Train the model
         trainer = ImageClassifierTrainer("VGG19")
-        trainer.train(10)
+        trainer.train(num_rows)
         trainer.save_model("model.h5")
 
 

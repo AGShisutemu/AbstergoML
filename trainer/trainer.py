@@ -106,10 +106,10 @@ class ImageClassifierTrainer:
         # Train the model
         self.model.fit(
             self.train_generator,
-            steps_per_epoch=self.train_generator.samples,
-            epochs=epochs * 10,
+            steps_per_epoch=self.train_generator.samples//epochs,
+            epochs=10,
             validation_data=self.val_generator,
-            validation_steps=self.val_generator.samples,
+            validation_steps=self.val_generator.samples//epochs,
         )
 
     def save_model(self, model_filename):
