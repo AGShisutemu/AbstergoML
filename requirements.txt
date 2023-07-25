@@ -5,3 +5,8 @@ opencv-python
 pillow
 PyQt5
 scipy
+face-recognition
+matplotlib
+scikit-learn
+ipykernel
+opencv
