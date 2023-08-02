@@ -4,12 +4,12 @@ import os
 import numpy as np
 
 # Load known face images and names
-known_face_images = "face_data"
-known_persons_folder= "face_data"
-known_face_names = "face_data/Elijah"
+# known_face_images = "face_data"
+# known_persons_folder= "face_data"
+# known_face_names = "face_data/Elijah"
 
-known_persons_encodings = {}
-known_persons_encodings_array = {}
+# known_persons_encodings = {}
+# known_persons_encodings_array = {}
 
 
 # Load a sample picture and learn how to recognize it.
